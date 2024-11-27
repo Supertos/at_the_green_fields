@@ -43,7 +43,7 @@ class OpenGLObject(RenderObject):
     
     void main() {
         vec2 sample_pos = vec2(uvs.x, uvs.y);
-        f_color = vec4(texture(tex, sample_pos).rg, texture(tex, sample_pos).b + random, 1.0);
+        f_color = vec4(texture(tex, sample_pos).rg + sin(time), texture(tex, sample_pos).b, 1.0);
     }
     """
 
@@ -97,8 +97,10 @@ class OpenGLObject(RenderObject):
         self.updateUniform( name, obj )
 
     def updateUniform(self, key, val):
-        self._textures[key] = self._shader.ctx.texture((512, 512), 4)
-        self._textures[key].write(pg.image.tostring(val, "RGBA"))
+        self._textures[key] = self._shader.ctx.texture( val.get_size(), 4 )
+        self._textures[key].filter = (moderngl.NEAREST, moderngl.NEAREST)
+        self._textures[key].swizzle = isinstance(val, pg.surface.Surface) and "BGRA" or "RGBA"
+        self._textures[key].write( val.get_view('1') )
 
     @staticmethod
     def isTexture(obj):
@@ -108,8 +110,6 @@ class OpenGLObject(RenderObject):
         for key, val in enumerate(self._uniforms):
             if OpenGLObject.isTexture(val) and key not in self._textures:
                 self.updateUniform( key, val )
-
-
 
     def uploadUniforms(self):
         usage = self.textureCount
@@ -131,6 +131,7 @@ class OpenGLObject(RenderObject):
             self._frameBuffer.use()
             self.vao.render( mode=moderngl.TRIANGLE_STRIP )
             self._out = pg.image.frombuffer(self._frameBuffer.read(), self._baseSurf.get_size(), "RGB")
+
     def renderGLDirect(self, time=0, random=0):
         self._texture.use(0)
         self._shader["tex"] = 0
